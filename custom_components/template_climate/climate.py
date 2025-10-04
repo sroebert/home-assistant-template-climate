@@ -510,7 +510,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
         super()._async_setup_templates()
 
     @callback
-    def _update_min_temp(self, temp: str | float) -> None:
+    def _update_min_temp(self, temp: Any) -> None:
         if temp not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 self._attr_min_temp = float(temp)
@@ -518,7 +518,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse min temperature from %s", temp)
 
     @callback
-    def _update_max_temp(self, temp: str | float) -> None:
+    def _update_max_temp(self, temp: Any) -> None:
         if temp not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 self._attr_max_temp = float(temp)
@@ -526,7 +526,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse max temperature from %s", temp)
 
     @callback
-    def _update_current_temp(self, temp: str | float) -> None:
+    def _update_current_temp(self, temp: Any) -> None:
         if temp not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 self._attr_current_temperature = float(temp)
@@ -534,7 +534,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse temperature from %s", temp)
 
     @callback
-    def _update_current_humidity(self, humidity: str | float) -> None:
+    def _update_current_humidity(self, humidity: Any) -> None:
         if humidity not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 self._attr_current_humidity = float(humidity)
@@ -542,7 +542,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse humidity from %s", humidity)
 
     @callback
-    def _update_min_humidity(self, humidity: str | float) -> None:
+    def _update_min_humidity(self, humidity: Any) -> None:
         if humidity not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 self._attr_min_humidity = float(humidity)
@@ -550,7 +550,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse min humidity from %s", humidity)
 
     @callback
-    def _update_max_humidity(self, humidity: str | float) -> None:
+    def _update_max_humidity(self, humidity: Any) -> None:
         if humidity not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 self._attr_max_humidity = float(humidity)
@@ -558,7 +558,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse max humidity from %s", humidity)
 
     @callback
-    def _update_target_humidity(self, humidity: str | float) -> None:
+    def _update_target_humidity(self, humidity: Any) -> None:
         if humidity not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 new_humidity = float(humidity)
@@ -569,7 +569,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse target humidity from %s", humidity)
 
     @callback
-    def _update_target_temp(self, temp: str | float) -> None:
+    def _update_target_temp(self, temp: Any) -> None:
         if temp not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 new_target_temp = float(temp)
@@ -580,7 +580,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse temperature from %s", temp)
 
     @callback
-    def _update_target_temp_high(self, temp: str | float) -> None:
+    def _update_target_temp_high(self, temp: Any) -> None:
         if temp not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 new_target_temp_high = float(temp)
@@ -591,7 +591,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse temperature high from %s", temp)
 
     @callback
-    def _update_target_temp_low(self, temp: str | float) -> None:
+    def _update_target_temp_low(self, temp: Any) -> None:
         if temp not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             try:
                 new_target_temp_low = float(temp)
@@ -602,21 +602,30 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 LOGGER.error("Could not parse temperature low from %s", temp)
 
     @callback
-    def _update_hvac_mode(self, hvac_mode: str | None) -> None:
-        if hvac_mode in self._attr_hvac_modes:
-            hvac_mode = HVACMode(hvac_mode) if hvac_mode else None
-            if self._attr_hvac_mode != hvac_mode:
-                self._attr_hvac_mode = hvac_mode
-                self.async_write_ha_state()
-        elif hvac_mode not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            LOGGER.error(
-                "Received invalid hvac mode: %s. Expected: %s.",
-                hvac_mode,
-                self._attr_hvac_modes,
-            )
+    def _update_hvac_mode(self, hvac_mode_value: Any) -> None:
+        if hvac_mode_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                hvac_mode = HVACMode(str(hvac_mode_value))
+                if hvac_mode in self._attr_hvac_modes:
+                    if self._attr_hvac_mode != hvac_mode:
+                        self._attr_hvac_mode = hvac_mode
+                        self.async_write_ha_state()
+                else:
+                    LOGGER.error(
+                        "Received invalid hvac mode: %s. Expected: %s.",
+                        hvac_mode,
+                        self._attr_hvac_modes,
+                    )
+            except ValueError:
+                LOGGER.error(
+                    "Received invalid hvac mode: %s. Expected: %s.",
+                    hvac_mode_value,
+                    self._attr_hvac_modes,
+                )
 
     @callback
-    def _update_preset_mode(self, preset_mode: str | None) -> None:
+    def _update_preset_mode(self, preset_mode_value: Any) -> None:
+        preset_mode = str(preset_mode_value)
         if self._attr_preset_modes and preset_mode in self._attr_preset_modes:
             if self._attr_preset_mode != preset_mode:
                 self._attr_preset_mode = preset_mode
@@ -629,22 +638,22 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             )
 
     @callback
-    def _update_fan_mode(self, fan_mode: str | None) -> None:
-        fan_mode_str = str(fan_mode)
-        if self._attr_fan_modes and fan_mode_str in self._attr_fan_modes:
-            if self._attr_fan_mode != fan_mode_str:
-                self._attr_fan_mode = fan_mode_str
+    def _update_fan_mode(self, fan_mode_value: Any) -> None:
+        fan_mode = str(fan_mode_value)
+        if self._attr_fan_modes and fan_mode in self._attr_fan_modes:
+            if self._attr_fan_mode != fan_mode:
+                self._attr_fan_mode = fan_mode
                 self.async_write_ha_state()
         elif fan_mode not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             LOGGER.error(
-                "Received invalid fan mode: %s (str: %s). Expected: %s.",
-                fan_mode,
-                fan_mode_str,
+                "Received invalid fan mode: %s. Expected: %s.",
+                fan_mode_value,
                 self._attr_fan_modes,
             )
 
     @callback
-    def _update_swing_mode(self, swing_mode: str | None) -> None:
+    def _update_swing_mode(self, swing_mode_value: Any) -> None:
+        swing_mode = str(swing_mode_value)
         if self._attr_swing_modes and swing_mode in self._attr_swing_modes:
             if self._attr_swing_mode != swing_mode:
                 self._attr_swing_mode = swing_mode
@@ -657,17 +666,19 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             )
 
     @callback
-    def _update_hvac_action(self, hvac_action: str | None) -> None:
-        if hvac_action in HVACAction or hvac_action is None:
-            if self._attr_hvac_action != hvac_action:
-                self._attr_hvac_action = HVACAction(hvac_action)
-                self.async_write_ha_state()
-        elif hvac_action not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            LOGGER.error(
-                "Received invalid hvac action: %s. Expected: %s.",
-                hvac_action,
-                [str(member) for member in HVACAction],
-            )
+    def _update_hvac_action(self, hvac_action_value: Any) -> None:
+        if hvac_action_value not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                hvac_action = HVACAction(str(hvac_action_value))
+                if self._attr_hvac_action != hvac_action:
+                    self._attr_hvac_action = hvac_action
+                    self.async_write_ha_state()
+            except ValueError:
+                LOGGER.error(
+                    "Received invalid hvac action: %s. Expected: %s.",
+                    hvac_action_value,
+                    [str(member) for member in HVACAction],
+                )
 
     @property
     def target_temperature(self) -> float | None:
@@ -696,7 +707,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             else None
         )
 
-    async def async_set_hvac_mode(self, hvac_mode: HVACMode | None) -> None:
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new operation mode."""
         if self._hvac_mode_template is None:
             self._attr_hvac_mode = hvac_mode  # always optimistic
@@ -782,7 +793,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
         # Handle potential HVAC mode change
         if operation_mode := kwargs.get(ATTR_HVAC_MODE):
             operation_mode = HVACMode(operation_mode) if operation_mode else None
-            if operation_mode != self._attr_hvac_mode:
+            if operation_mode and operation_mode != self._attr_hvac_mode:
                 await self.async_set_hvac_mode(operation_mode)
 
         # Run the set temperature script if defined
@@ -798,7 +809,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 context=self._context,
             )
 
-    async def async_set_humidity(self, humidity: float) -> None:
+    async def async_set_humidity(self, humidity: int) -> None:
         """Set new target humidity."""
         if self._target_humidity_template is None:
             self._attr_target_humidity = humidity  # always optimistic
