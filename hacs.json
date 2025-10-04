@@ -1,5 +1,5 @@
 {
-    "name": "Integration blueprint",
-    "homeassistant": "2025.2.4",
+    "name": "Template Climate",
+    "homeassistant": "2025.9.0",
     "hacs": "2.0.5"
 }
