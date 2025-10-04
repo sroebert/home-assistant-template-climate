@@ -1,0 +1,15 @@
+{
+  "domain": "template_climate",
+  "name": "Template Climate",
+  "codeowners": [
+    "@sroebert"
+  ],
+  "dependencies": [
+    "template"
+  ],
+  "documentation": "https://github.com/sroebert/home-assistant-template-climate",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/sroebert/home-assistant-template-climate/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

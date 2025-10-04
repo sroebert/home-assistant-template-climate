@@ -1,12 +1,19 @@
-# https://www.home-assistant.io/integrations/default_config/
 default_config:
 
-# https://www.home-assistant.io/integrations/homeassistant/
 homeassistant:
   debug: true
 
-# https://www.home-assistant.io/integrations/logger/
 logger:
   default: info
   logs:
-    custom_components.integration_blueprint: debug
+    custom_components.template_climate: debug
+
+climate:
+  - platform: template_climate
+    name: Test Thermostat
+    modes:
+      - "auto"
+      - "heat"
+      - "off"
+    min_temp: 5
+    max_temp: 30
