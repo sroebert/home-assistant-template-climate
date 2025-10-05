@@ -1,1 +1,9 @@
-{}
+{
+    "title": "Template Climate",
+    "services": {
+        "reload": {
+            "name": "[%key:common::action::reload%]",
+            "description": "Reloads template climate entities from the YAML-configuration."
+        }
+    }
+}
