@@ -31,7 +31,6 @@ from homeassistant.components.climate.const import (
     FAN_LOW,
     FAN_MEDIUM,
     HVAC_MODES,
-    PRESET_NONE,
     SWING_HORIZONTAL_OFF,
     SWING_HORIZONTAL_ON,
     SWING_OFF,
@@ -111,49 +110,6 @@ DOMAIN = "template_climate"
 DEFAULT_NAME = "Template Climate"
 
 
-def valid_preset_mode_configuration(config: ConfigType) -> ConfigType:
-    """Validate that the preset mode reset payload is not one of the preset modes."""
-    if PRESET_NONE in config[CONF_PRESET_MODES_LIST]:
-        message = (
-            f"{CONF_PRESET_MODES_LIST} must not include preset mode '{PRESET_NONE}'"
-        )
-        raise vol.Invalid(message)
-    return config
-
-
-def valid_humidity_range_configuration(config: ConfigType) -> ConfigType:
-    """Validate a target_humidity range configuration, throws otherwise."""
-    if config[CONF_HUMIDITY_MIN] >= config[CONF_HUMIDITY_MAX]:
-        message = f"{CONF_HUMIDITY_MAX} must be > {CONF_HUMIDITY_MIN}"
-        raise vol.Invalid(message)
-
-    if config[CONF_HUMIDITY_MAX] > 100:  # noqa: PLR2004
-        message = "max_humidity must be <= 100"
-        raise vol.Invalid(message)
-
-    return config
-
-
-def valid_humidity_template_configuration(config: ConfigType) -> ConfigType:
-    """
-    Validate humidity template.
-
-    Ensure that if CONF_TARGET_HUMIDITY_TEMPLATE is set then
-    CONF_SET_HUMIDITY_ACTION is also set.
-    """
-    if (
-        CONF_TARGET_HUMIDITY_TEMPLATE in config
-        and CONF_SET_HUMIDITY_ACTION not in config
-    ):
-        message = (
-            f"{CONF_TARGET_HUMIDITY_TEMPLATE} cannot be used without "
-            f"{CONF_SET_HUMIDITY_ACTION}"
-        )
-        raise vol.Invalid(message)
-
-    return config
-
-
 CLIMATE_SCHEMA = {
     vol.Optional(CONF_TEMP_INITIAL): vol.All(vol.Coerce(float)),
     vol.Optional(CONF_TEMP_MIN): vol.Coerce(float),
@@ -216,17 +172,14 @@ CLIMATE_SCHEMA = {
 }
 
 PLATFORMS = [Platform.CLIMATE]
-PLATFORM_SCHEMA = vol.All(
+PLATFORM_SCHEMA = (
     cv.PLATFORM_SCHEMA.extend(TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA)
     .extend(
         make_template_entity_common_modern_attributes_schema(
             CLIMATE_DOMAIN, DEFAULT_NAME
         ).schema
     )
-    .extend(CLIMATE_SCHEMA),
-    valid_preset_mode_configuration,
-    valid_humidity_range_configuration,
-    valid_humidity_template_configuration,
+    .extend(CLIMATE_SCHEMA)
 )
 
 
