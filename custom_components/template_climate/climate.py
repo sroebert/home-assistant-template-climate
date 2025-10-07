@@ -49,6 +49,7 @@ from homeassistant.components.template.schemas import (
 )
 from homeassistant.components.template.template_entity import TemplateEntity
 from homeassistant.const import (
+    ATTR_SUPPORTED_FEATURES,
     ATTR_TEMPERATURE,
     CONF_OPTIMISTIC,
     CONF_TEMPERATURE_UNIT,
@@ -56,7 +57,6 @@ from homeassistant.const import (
     PRECISION_TENTHS,
     PRECISION_WHOLE,
     STATE_UNAVAILABLE,
-    ATTR_SUPPORTED_FEATURES,
     STATE_UNKNOWN,
     Platform,
     UnitOfTemperature,
