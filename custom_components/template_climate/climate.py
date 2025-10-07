@@ -1,7 +1,9 @@
 """Support for Template climates."""
 
+import json
 import logging
 from collections.abc import Callable
+from enum import StrEnum
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
@@ -67,6 +69,23 @@ from homeassistant.helpers.template import Template
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util.unit_conversion import TemperatureConverter
 
+
+class HVACFeature(StrEnum):
+    """HVAC feature for climate devices."""
+
+    TURN_ON = "turn_on"
+    TURN_OFF = "turn_off"
+    TARGET_TEMPERATURE = "target_temperature"
+    TARGET_TEMPERATURE_RANGE = "target_temperature_range"
+    TARGET_HUMIDITY = "target_humidity"
+    PRESET_MODE = "preset_mode"
+    FAN_MODE = "fan_mode"
+    SWING_MODE = "swing_mode"
+    SWING_HORIZONTAL_MODE = "swing_horizontal_mode"
+
+
+HVAC_FEATURES = [cls.value for cls in HVACFeature]
+
 _LOGGER = logging.getLogger(__name__)
 
 CONF_CLIMATES = "climates"
@@ -78,6 +97,7 @@ CONF_HUMIDITY_INITIAL = "initial_humidity"
 CONF_HUMIDITY_MAX = "max_humidity"
 CONF_HUMIDITY_MIN = "min_humidity"
 CONF_HVAC_ACTION_TEMPLATE = "hvac_action_template"
+CONF_HVAC_FEATURES_TEMPLATE = "features_template"
 CONF_HVAC_MODE_TEMPLATE = "hvac_mode_template"
 CONF_MODE_LIST = "modes"
 CONF_PRECISION = "precision"
@@ -105,6 +125,8 @@ CONF_TEMP_STEP = "temp_step"
 CONF_TURN_OFF_ACTION = "turn_off"
 CONF_TURN_ON_ACTION = "turn_on"
 
+ATTR_HVAC_FEATURES = "hvac_features"
+
 DOMAIN = "template_climate"
 DEFAULT_NAME = "Template Climate"
 
@@ -130,10 +152,12 @@ CLIMATE_SCHEMA = {
     vol.Optional(CONF_TARGET_HUMIDITY_TEMPLATE): cv.template,
     vol.Optional(CONF_HVAC_MODE_TEMPLATE): cv.template,
     vol.Optional(CONF_HVAC_ACTION_TEMPLATE): cv.template,
+    vol.Optional(CONF_HVAC_FEATURES_TEMPLATE): cv.template,
     vol.Optional(CONF_PRESET_MODE_TEMPLATE): cv.template,
     vol.Optional(CONF_FAN_MODE_TEMPLATE): cv.template,
     vol.Optional(CONF_SWING_MODE_TEMPLATE): cv.template,
     vol.Optional(CONF_SWING_HORIZONTAL_MODE_TEMPLATE): cv.template,
+    vol.Optional(CONF_HVAC_FEATURES_TEMPLATE): cv.template,
     vol.Optional(CONF_TURN_ON_ACTION): cv.SCRIPT_SCHEMA,
     vol.Optional(CONF_TURN_OFF_ACTION): cv.SCRIPT_SCHEMA,
     vol.Optional(CONF_SET_TEMPERATURE_ACTION): cv.SCRIPT_SCHEMA,
@@ -208,6 +232,8 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
 
     _optimistic: bool
 
+    _attr_hvac_features: list[str] | None = None
+
     _current_temp_template: Template | None = None
     _target_temperature_template: Template | None = None
     _target_temperature_low_template: Template | None = None
@@ -216,6 +242,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
     _target_humidity_template: Template | None = None
     _hvac_mode_template: Template | None = None
     _hvac_action_template: Template | None = None
+    _hvac_features_template: Template | None = None
     _fan_mode_template: Template | None = None
     _preset_mode_template: Template | None = None
     _swing_mode_template: Template | None = None
@@ -282,6 +309,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
 
         self._hvac_mode_template = config.get(CONF_HVAC_MODE_TEMPLATE)
         self._hvac_action_template = config.get(CONF_HVAC_ACTION_TEMPLATE)
+        self._hvac_features_template = config.get(CONF_HVAC_FEATURES_TEMPLATE)
         self._preset_mode_template = config.get(CONF_PRESET_MODE_TEMPLATE)
         self._fan_mode_template = config.get(CONF_FAN_MODE_TEMPLATE)
         self._swing_mode_template = config.get(CONF_SWING_MODE_TEMPLATE)
@@ -325,6 +353,9 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
         )
 
     def _init_features(self) -> None:
+        if self._hvac_features_template is not None:
+            return
+
         support = ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
 
         if (
@@ -422,6 +453,13 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
 
         last_attributes = last_state.attributes
 
+        if (
+            self._hvac_features_template is not None
+            and last_attributes.get(ATTR_HVAC_FEATURES) in HVAC_FEATURES
+        ):
+            self._attr_hvac_features = last_attributes[ATTR_HVAC_FEATURES]
+            self._update_supported_features()
+
         if last_state.state in self.hvac_modes:
             self._attr_hvac_mode = HVACMode(last_state.state)
 
@@ -443,20 +481,20 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             self._attr_hvac_action = HVACAction(last_attributes.get(ATTR_HVAC_ACTION))
 
         if last_attributes.get(ATTR_PRESET_MODE) in (self.preset_modes or []):
-            self._attr_preset_mode = last_attributes.get(ATTR_PRESET_MODE)
+            self._attr_preset_mode = last_attributes[ATTR_PRESET_MODE]
 
         if last_attributes.get(ATTR_FAN_MODE) in (self.fan_modes or []):
-            self._attr_fan_mode = last_attributes.get(ATTR_FAN_MODE)
+            self._attr_fan_mode = last_attributes[ATTR_FAN_MODE]
 
         if last_attributes.get(ATTR_SWING_MODE) in (self.swing_modes or []):
-            self._attr_swing_mode = last_attributes.get(ATTR_SWING_MODE)
+            self._attr_swing_mode = last_attributes[ATTR_SWING_MODE]
 
         if last_attributes.get(ATTR_SWING_HORIZONTAL_MODE) in (
             self.swing_horizontal_modes or []
         ):
-            self._attr_swing_horizontal_mode = last_attributes.get(
+            self._attr_swing_horizontal_mode = last_attributes[
                 ATTR_SWING_HORIZONTAL_MODE
-            )
+            ]
 
     def _setup_template_attribute(
         self,
@@ -508,7 +546,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             partial(self._update_enum, "_attr_hvac_modes"),
         )
         self._setup_template_attribute(
-            "_hvac_action",
+            "_attr_hvac_action",
             self._hvac_action_template,
             partial(self._update_enum, CURRENT_HVAC_ACTIONS),
         )
@@ -532,6 +570,13 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             self._swing_horizontal_mode_template,
             partial(self._update_enum, "_attr_swing_horizontal_modes"),
         )
+        if self._hvac_features_template is not None:
+            self.add_template_attribute(
+                "_attr_hvac_features",
+                self._hvac_features_template,
+                None,
+                self._update_features,
+            )
 
         super()._async_setup_templates()
 
@@ -573,6 +618,71 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
                 self.entity_id,
             )
             setattr(self, attribute, None)
+
+    @callback
+    def _update_features(self, value: Any) -> None:
+        if not value:
+            self._attr_hvac_features = []
+            return
+
+        value_list: list[str] = []
+
+        string_value = str(value)
+        try:
+            value_json = json.loads(string_value)
+            if not isinstance(value_json, list):
+                _LOGGER.error(
+                    "Received invalid %s: %s for entity %s",
+                    ATTR_HVAC_FEATURES,
+                    string_value,
+                    self.entity_id,
+                )
+                return
+
+            value_list = value_json
+
+        except ValueError:
+            value_list = [string_value]
+
+        features = []
+        for feature_value in value_list:
+            feature = str(feature_value)
+            if feature in HVAC_FEATURES:
+                features.append(feature)
+            else:
+                _LOGGER.error(
+                    "Received invalid %s: %s for entity %s",
+                    ATTR_HVAC_FEATURES,
+                    feature,
+                    self.entity_id,
+                )
+
+        self._attr_hvac_features = features
+        self._update_supported_features()
+
+    def _update_supported_features(self) -> None:
+        features = self._attr_hvac_features or []
+
+        support: ClimateEntityFeature = ClimateEntityFeature(0)
+        if HVACFeature.TURN_ON.value in features:
+            support |= ClimateEntityFeature.TURN_ON
+        if HVACFeature.TURN_OFF.value in features:
+            support |= ClimateEntityFeature.TURN_OFF
+        if HVACFeature.TARGET_TEMPERATURE.value in features:
+            support |= ClimateEntityFeature.TARGET_TEMPERATURE
+        if HVACFeature.TARGET_TEMPERATURE_RANGE.value in features:
+            support |= ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        if HVACFeature.TARGET_HUMIDITY.value in features:
+            support |= ClimateEntityFeature.TARGET_HUMIDITY
+        if HVACFeature.PRESET_MODE.value in features:
+            support |= ClimateEntityFeature.PRESET_MODE
+        if HVACFeature.FAN_MODE.value in features:
+            support |= ClimateEntityFeature.FAN_MODE
+        if HVACFeature.SWING_MODE.value in features:
+            support |= ClimateEntityFeature.SWING_MODE
+        if HVACFeature.SWING_HORIZONTAL_MODE.value in features:
+            support |= ClimateEntityFeature.SWING_HORIZONTAL_MODE
+        self._attr_supported_features = support
 
     async def async_turn_on(self) -> None:
         """Turn on the climate."""
@@ -796,3 +906,11 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
         if self._attr_hvac_mode != HVACMode.HEAT_COOL:
             return None
         return self._attr_target_temperature_high
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return the extra state attributes of the device."""
+        if self._hvac_features_template is None:
+            return None
+
+        return {ATTR_HVAC_FEATURES: self._attr_hvac_features}
