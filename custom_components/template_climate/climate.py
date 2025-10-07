@@ -56,6 +56,7 @@ from homeassistant.const import (
     PRECISION_TENTHS,
     PRECISION_WHOLE,
     STATE_UNAVAILABLE,
+    ATTR_SUPPORTED_FEATURES,
     STATE_UNKNOWN,
     Platform,
     UnitOfTemperature,
@@ -124,8 +125,6 @@ CONF_TEMP_MIN = "min_temp"
 CONF_TEMP_STEP = "temp_step"
 CONF_TURN_OFF_ACTION = "turn_off"
 CONF_TURN_ON_ACTION = "turn_on"
-
-ATTR_HVAC_FEATURES = "hvac_features"
 
 DOMAIN = "template_climate"
 DEFAULT_NAME = "Template Climate"
@@ -231,8 +230,6 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
     _entity_id_format = climate.ENTITY_ID_FORMAT
 
     _optimistic: bool
-
-    _attr_hvac_features: list[str] | None = None
 
     _current_temp_template: Template | None = None
     _target_temperature_template: Template | None = None
@@ -453,12 +450,12 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
 
         last_attributes = last_state.attributes
 
-        if (
-            self._hvac_features_template is not None
-            and last_attributes.get(ATTR_HVAC_FEATURES) in HVAC_FEATURES
-        ):
-            self._attr_hvac_features = last_attributes[ATTR_HVAC_FEATURES]
-            self._update_supported_features()
+        if self._hvac_features_template is not None:
+            supported_features = last_attributes.get(ATTR_SUPPORTED_FEATURES, 0)
+            try:
+                self._attr_supported_features = ClimateEntityFeature(supported_features)
+            except ValueError:
+                self._attr_supported_features = ClimateEntityFeature(0)
 
         if last_state.state in self.hvac_modes:
             self._attr_hvac_mode = HVACMode(last_state.state)
@@ -619,49 +616,32 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             )
             setattr(self, attribute, None)
 
-    @callback
-    def _update_features(self, value: Any) -> None:
+    def _parse_features_value(self, value: Any) -> list[str]:
         if not value:
-            self._attr_hvac_features = []
-            return
+            return []
 
-        value_list: list[str] = []
+        features: list[str] = []
 
         string_value = str(value)
         try:
             value_json = json.loads(string_value)
-            if not isinstance(value_json, list):
-                _LOGGER.error(
-                    "Received invalid %s: %s for entity %s",
-                    ATTR_HVAC_FEATURES,
-                    string_value,
-                    self.entity_id,
-                )
-                return
-
-            value_list = value_json
-
+            features = value_json if isinstance(value_json, list) else [string_value]
         except ValueError:
-            value_list = [string_value]
+            features = [string_value]
 
-        features = []
-        for feature_value in value_list:
-            feature = str(feature_value)
-            if feature in HVAC_FEATURES:
-                features.append(feature)
-            else:
-                _LOGGER.error(
-                    "Received invalid %s: %s for entity %s",
-                    ATTR_HVAC_FEATURES,
+        for feature in features:
+            if feature not in HVAC_FEATURES:
+                _LOGGER.warning(
+                    "Received invalid feature: %s for entity %s",
                     feature,
                     self.entity_id,
                 )
 
-        self._attr_hvac_features = features
-        self._update_supported_features()
+        return features
 
-    def _update_supported_features(self) -> None:
-        features = self._attr_hvac_features or []
+    @callback
+    def _update_features(self, value: Any) -> None:
+        features = self._parse_features_value(value)
 
         support: ClimateEntityFeature = ClimateEntityFeature(0)
         if HVACFeature.TURN_ON.value in features:
@@ -906,11 +886,3 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
         if self._attr_hvac_mode != HVACMode.HEAT_COOL:
             return None
         return self._attr_target_temperature_high
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Return the extra state attributes of the device."""
-        if self._hvac_features_template is None:
-            return None
-
-        return {ATTR_HVAC_FEATURES: self._attr_hvac_features}
