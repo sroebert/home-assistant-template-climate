@@ -42,7 +42,9 @@ from homeassistant.components.climate.const import (
 from homeassistant.components.climate.const import (
     DOMAIN as CLIMATE_DOMAIN,
 )
-from homeassistant.components.template.helpers import async_setup_template_platform
+from homeassistant.components.template.helpers import (
+    async_create_template_tracking_entities,
+)
 from homeassistant.components.template.schemas import (
     TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA,
     make_template_entity_common_modern_attributes_schema,
@@ -210,17 +212,15 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the Template Climate."""
-    await async_setup_reload_service(hass, DOMAIN, [CLIMATE_DOMAIN])
-    await async_setup_template_platform(
-        hass,
-        CLIMATE_DOMAIN,
-        config,
-        TemplateClimate,
-        None,
-        async_add_entities,
-        discovery_info,
-        {},
-    )
+    if discovery_info is None:
+        await async_setup_reload_service(hass, DOMAIN, [CLIMATE_DOMAIN])
+        async_create_template_tracking_entities(
+            TemplateClimate,
+            async_add_entities,
+            hass,
+            [config],
+            None,
+        )
 
 
 class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
