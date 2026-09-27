@@ -70,11 +70,14 @@ from homeassistant.util.unit_conversion import TemperatureConverter
 
 try:
     from homeassistant.components.template.schemas import (
+        TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA,
         make_template_entity_common_schema,
     )
 except ImportError:
     from homeassistant.components.template.schemas import (
-        make_template_entity_common_modern_attributes_schema as make_template_entity_common_schema,
+        TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA,
+        make_template_entity_common_modern_attributes_schema as 
+            make_template_entity_common_schema,
     )
 
 class HVACFeature(StrEnum):
