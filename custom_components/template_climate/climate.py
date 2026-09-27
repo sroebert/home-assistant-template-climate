@@ -85,6 +85,7 @@ except ImportError:
         make_template_entity_common_modern_attributes_schema as make_template_schema,
     )
 
+
 class HVACFeature(StrEnum):
     """HVAC feature for climate devices."""
 
@@ -204,11 +205,7 @@ CLIMATE_SCHEMA = {
 PLATFORMS = [Platform.CLIMATE]
 PLATFORM_SCHEMA = (
     cv.PLATFORM_SCHEMA.extend(TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA)
-    .extend(
-        make_template_schema(
-            CLIMATE_DOMAIN, DEFAULT_NAME
-        ).schema
-    )
+    .extend(make_template_schema(CLIMATE_DOMAIN, DEFAULT_NAME).schema)
     .extend(CLIMATE_SCHEMA)
 )
 
