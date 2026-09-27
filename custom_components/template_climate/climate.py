@@ -45,10 +45,6 @@ from homeassistant.components.climate.const import (
 from homeassistant.components.template.helpers import (
     async_create_template_tracking_entities,
 )
-from homeassistant.components.template.schemas import (
-    TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA,
-    make_template_entity_common_modern_attributes_schema,
-)
 from homeassistant.components.template.template_entity import TemplateEntity
 from homeassistant.const import (
     ATTR_SUPPORTED_FEATURES,
@@ -72,6 +68,14 @@ from homeassistant.helpers.template import Template
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util.unit_conversion import TemperatureConverter
 
+try:
+    from homeassistant.components.template.schemas import (
+        make_template_entity_common_schema,
+    )
+except ImportError:
+    from homeassistant.components.template.schemas import (
+        make_template_entity_common_modern_attributes_schema as make_template_entity_common_schema,
+    )
 
 class HVACFeature(StrEnum):
     """HVAC feature for climate devices."""
@@ -193,7 +197,7 @@ PLATFORMS = [Platform.CLIMATE]
 PLATFORM_SCHEMA = (
     cv.PLATFORM_SCHEMA.extend(TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA)
     .extend(
-        make_template_entity_common_modern_attributes_schema(
+        make_template_entity_common_schema(
             CLIMATE_DOMAIN, DEFAULT_NAME
         ).schema
     )
