@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Steven Roebert
+
 """Support for Template climates."""
 
 import json
@@ -71,14 +73,18 @@ from homeassistant.util.unit_conversion import TemperatureConverter
 try:
     from homeassistant.components.template.schemas import (
         TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA,
-        make_template_entity_common_schema,
+    )
+    from homeassistant.components.template.schemas import (
+        make_template_entity_common_schema as make_template_schema,
     )
 except ImportError:
     from homeassistant.components.template.schemas import (
         TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA,
-        make_template_entity_common_modern_attributes_schema as 
-            make_template_entity_common_schema,
     )
+    from homeassistant.components.template.schemas import (
+        make_template_entity_common_modern_attributes_schema as make_template_schema,
+    )
+
 
 class HVACFeature(StrEnum):
     """HVAC feature for climate devices."""
@@ -199,11 +205,7 @@ CLIMATE_SCHEMA = {
 PLATFORMS = [Platform.CLIMATE]
 PLATFORM_SCHEMA = (
     cv.PLATFORM_SCHEMA.extend(TEMPLATE_ENTITY_OPTIMISTIC_SCHEMA)
-    .extend(
-        make_template_entity_common_schema(
-            CLIMATE_DOMAIN, DEFAULT_NAME
-        ).schema
-    )
+    .extend(make_template_schema(CLIMATE_DOMAIN, DEFAULT_NAME).schema)
     .extend(CLIMATE_SCHEMA)
 )
 

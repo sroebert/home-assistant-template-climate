@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Steven Roebert
+
 """
 Custom integration to create climate entities using templates.
 
