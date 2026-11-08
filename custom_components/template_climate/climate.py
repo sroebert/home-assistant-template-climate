@@ -240,6 +240,12 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
 
     _optimistic: bool
 
+    _temp_unit: str
+    _current_temp: float | None = None
+    _target_temp: float | None = None
+    _target_temp_low: float | None = None
+    _target_temp_high: float | None = None
+
     _current_temp_template: Template | None = None
     _target_temperature_template: Template | None = None
     _target_temperature_low_template: Template | None = None
@@ -282,7 +288,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
         if precision := config.get(CONF_PRECISION):
             self._attr_precision = precision
 
-        self._attr_temperature_unit = config.get(
+        self._temp_unit = config.get(
             CONF_TEMPERATURE_UNIT, self.hass.config.units.temperature_unit
         )
         if (min_temp := config.get(CONF_TEMP_MIN)) is not None:
@@ -414,15 +420,15 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             TemperatureConverter.convert(
                 DEFAULT_INITIAL_TEMPERATURE,
                 UnitOfTemperature.CELSIUS,
-                self.temperature_unit,
+                self._temp_unit,
             ),
         )
         if self._target_temperature_template is None or self._optimistic:
-            self._attr_target_temperature = init_temp
+            self._target_temp = init_temp
         if self._target_temperature_low_template is None or self._optimistic:
-            self._attr_target_temperature_low = init_temp
+            self._target_temp_low = init_temp
         if self._target_temperature_high_template is None or self._optimistic:
-            self._attr_target_temperature_high = init_temp
+            self._target_temp_high = init_temp
 
         if self._target_humidity_template is None or self._optimistic:
             self._attr_target_humidity = config.get(
@@ -470,13 +476,13 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             self._attr_hvac_mode = HVACMode(last_state.state)
 
         if (temp := last_attributes.get(ATTR_CURRENT_TEMPERATURE)) is not None:
-            self._attr_current_temperature = temp
+            self._current_temp = temp
         if (temp := last_attributes.get(ATTR_TEMPERATURE)) is not None:
-            self._attr_target_temperature = temp
+            self._target_temp = temp
         if (temp := last_attributes.get(ATTR_TARGET_TEMP_LOW)) is not None:
-            self._attr_target_temperature_low = temp
+            self._target_temp_low = temp
         if (temp := last_attributes.get(ATTR_TARGET_TEMP_HIGH)) is not None:
-            self._attr_target_temperature_high = temp
+            self._target_temp_high = temp
 
         if (humidity := last_attributes.get(ATTR_CURRENT_HUMIDITY)) is not None:
             self._attr_current_humidity = humidity
@@ -521,20 +527,20 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
     @callback
     def _async_setup_templates(self) -> None:
         self._setup_template_attribute(
-            "_attr_current_temperature", self._current_temp_template, self._update_float
+            "_current_temp", self._current_temp_template, self._update_float
         )
         self._setup_template_attribute(
-            "_attr_target_temperature",
+            "_target_temp",
             self._target_temperature_template,
             self._update_float,
         )
         self._setup_template_attribute(
-            "_attr_target_temperature_low",
+            "_target_temp_low",
             self._target_temperature_low_template,
             self._update_float,
         )
         self._setup_template_attribute(
-            "_attr_target_temperature_high",
+            "_target_temp_high",
             self._target_temperature_high_template,
             self._update_float,
         )
@@ -771,7 +777,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             changed |= self._set_temperature_attribute(
                 temperature,
                 "_target_temperature_template",
-                "_attr_target_temperature",
+                "_target_temp",
             )
 
         if (
@@ -780,7 +786,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             changed |= self._set_temperature_attribute(
                 temperature_low,
                 "_target_temperature_low_template",
-                "_attr_target_temperature_low",
+                "_target_temp_low",
             )
 
         if (
@@ -789,7 +795,7 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             changed |= self._set_temperature_attribute(
                 temperature_high,
                 "_target_temperature_high_template",
-                "_attr_target_temperature_high",
+                "_target_temp_high",
             )
 
         if changed:
@@ -876,43 +882,57 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
             self.async_write_ha_state()
 
     @property
-    def target_temperature(self) -> float | None:
-        """Return the temperature we try to reach."""
-        if self._attr_hvac_mode == HVACMode.HEAT_COOL:
-            return None
-        return self._attr_target_temperature
+    def native_temperature_unit(self) -> str:
+        """Return the unit of measurement (HA 2026.11+)."""
+        return self._temp_unit
+
+    @property
+    def temperature_unit(self) -> str:
+        """Return the unit of measurement (HA before 2026.11)."""
+        return self.native_temperature_unit
+
+    @property
+    def native_current_temperature(self) -> float | None:
+        """Return the current temperature (HA 2026.11+)."""
+        return self._current_temp
+
+    @property
+    def current_temperature(self) -> float | None:
+        """Return the current temperature (HA before 2026.11)."""
+        return self.native_current_temperature
 
     @property
     def native_target_temperature(self) -> float | None:
-        """Return the temperature we try to reach."""
+        """Return the temperature we try to reach (HA 2026.11+)."""
         if self._attr_hvac_mode == HVACMode.HEAT_COOL:
             return None
-        return self._attr_target_temperature
+        return self._target_temp
 
     @property
-    def target_temperature_low(self) -> float | None:
-        """Return the lowbound target temperature we try to reach."""
-        if self._attr_hvac_mode != HVACMode.HEAT_COOL:
-            return None
-        return self._attr_target_temperature_low
+    def target_temperature(self) -> float | None:
+        """Return the temperature we try to reach (HA before 2026.11)."""
+        return self.native_target_temperature
 
     @property
     def native_target_temperature_low(self) -> float | None:
-        """Return the lowbound target temperature we try to reach."""
+        """Return the lowbound target temperature we try to reach (HA 2026.11+)."""
         if self._attr_hvac_mode != HVACMode.HEAT_COOL:
             return None
-        return self._attr_target_temperature_low
+        return self._target_temp_low
 
     @property
-    def target_temperature_high(self) -> float | None:
-        """Return the highbound target temperature we try to reach."""
-        if self._attr_hvac_mode != HVACMode.HEAT_COOL:
-            return None
-        return self._attr_target_temperature_high
+    def target_temperature_low(self) -> float | None:
+        """Return the lowbound target temperature (HA before 2026.11)."""
+        return self.native_target_temperature_low
 
     @property
     def native_target_temperature_high(self) -> float | None:
-        """Return the highbound target temperature we try to reach."""
+        """Return the highbound target temperature we try to reach (HA 2026.11+)."""
         if self._attr_hvac_mode != HVACMode.HEAT_COOL:
             return None
-        return self._attr_target_temperature_high
+        return self._target_temp_high
+
+    @property
+    def target_temperature_high(self) -> float | None:
+        """Return the highbound target temperature (HA before 2026.11)."""
+        return self.native_target_temperature_high
