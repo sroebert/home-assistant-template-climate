@@ -897,7 +897,21 @@ class TemplateClimate(TemplateEntity, ClimateEntity, RestoreEntity):
         return self._attr_target_temperature_low
 
     @property
+    def native_target_temperature_low(self) -> float | None:
+        """Return the lowbound target temperature we try to reach."""
+        if self._attr_hvac_mode != HVACMode.HEAT_COOL:
+            return None
+        return self._attr_target_temperature_low
+
+    @property
     def target_temperature_high(self) -> float | None:
+        """Return the highbound target temperature we try to reach."""
+        if self._attr_hvac_mode != HVACMode.HEAT_COOL:
+            return None
+        return self._attr_target_temperature_high
+
+    @property
+    def native_target_temperature_high(self) -> float | None:
         """Return the highbound target temperature we try to reach."""
         if self._attr_hvac_mode != HVACMode.HEAT_COOL:
             return None
